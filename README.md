@@ -1,6 +1,6 @@
 # github-api
 
-App provides one HTTP endpoint which fetches data about user repositories and their branches from GitHub api.
+App provides one HTTP endpoint which shows data about user repositories and their branches from GitHub api.
 ## Beforehand
 ### Prerequisite
 To run this app you need to have installed and configured `maven 3.9.5` or newer and `java 21 JDK` or newer.
