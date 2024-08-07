@@ -9,8 +9,6 @@ import pl.majchrzw.repoapi.model.RepositoryDto;
 import pl.majchrzw.repoapi.service.GithubApiService;
 import reactor.core.publisher.Flux;
 
-import java.util.List;
-
 @RestController
 public class MainController {
 	
