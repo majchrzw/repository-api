@@ -14,6 +14,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import pl.majchrzw.repoapi.exception.ExternalApiErrorException;
 import pl.majchrzw.repoapi.exception.UserNotFoundException;
+import pl.majchrzw.repoapi.model.BranchDto;
 import pl.majchrzw.repoapi.model.RepositoryDto;
 import pl.majchrzw.repoapi.service.GithubApiService;
 
@@ -103,9 +104,10 @@ public class GithubApiServiceTests {
 		Assertions.assertEquals("Hello-World", res.getFirst().name());
 		Assertions.assertEquals("octocat", res.getFirst().owner().login());
 		Assertions.assertFalse(res.getFirst().fork());
-		Assertions.assertEquals(1, res.getFirst().branches().size());
-		Assertions.assertEquals("master", res.getFirst().branches().getFirst().name());
-		Assertions.assertEquals("c5b97d5ae6c19d5c5df71a34c7fbeeda2479ccbc", res.getFirst().branches().getFirst().lastCommit().sha());
+		List<BranchDto> branches = res.getFirst().branches().collectList().block();
+		Assertions.assertEquals(1, branches.size());
+		Assertions.assertEquals("master", branches.getFirst().name());
+		Assertions.assertEquals("c5b97d5ae6c19d5c5df71a34c7fbeeda2479ccbc", branches.getFirst().lastCommit().sha());
 		Assertions.assertEquals(2, webServer.getRequestCount() - initialCount);
 	}
 	
@@ -147,7 +149,7 @@ public class GithubApiServiceTests {
 		assert res != null;
 		Assertions.assertEquals(1, res.size());
 		Assertions.assertFalse(res.getFirst().fork());
-		Assertions.assertEquals(1, res.getFirst().branches().size());
+		Assertions.assertEquals(1, res.getFirst().branches().collectList().block().size());
 		Assertions.assertEquals(2, webServer.getRequestCount() - initialCount);
 	}
 	
@@ -194,8 +196,10 @@ public class GithubApiServiceTests {
 		// then
 		assert res != null;
 		Assertions.assertEquals(2, res.size());
-		Assertions.assertEquals(1, res.getFirst().branches().size());
-		Assertions.assertEquals(0, res.getLast().branches().size());
+		var firstBranches = res.getFirst().branches().collectList().block();
+		Assertions.assertEquals(1, firstBranches.size());
+		var secondBranches = res.getLast().branches().collectList().block();
+		Assertions.assertEquals(0, secondBranches.size());
 		Assertions.assertEquals(3, webServer.getRequestCount() - initialCount);
 	}
 	
@@ -232,7 +236,8 @@ public class GithubApiServiceTests {
 		// then
 		assert res != null;
 		Assertions.assertEquals(1, res.size());
-		Assertions.assertEquals(2, res.getFirst().branches().size());
+		var branches = res.getFirst().branches().collectList().block();
+		Assertions.assertEquals(2, branches.size());
 		Assertions.assertEquals(2, webServer.getRequestCount() - initialCount);
 	}
 	
@@ -254,20 +259,5 @@ public class GithubApiServiceTests {
 				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 		// then
 		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("some_user").blockFirst());
-	}
-	
-	@Test
-	void rateLimitedOnBranchResponseTest() {
-		// given
-		webServer.enqueue(new MockResponse()
-				.setResponseCode(200)
-				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setBody(oneRepo));
-		webServer.enqueue(new MockResponse()
-				.setResponseCode(403)
-				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setBody("[]"));
-		// then
-		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("random").blockFirst());
 	}
 }

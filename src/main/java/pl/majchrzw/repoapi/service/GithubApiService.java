@@ -26,14 +26,13 @@ public class GithubApiService {
 	
 	public Flux<RepositoryDto> getRepositoriesAndBranchesOfUser(String username) {
 		log.info("GET request for repositories and branches of user {}", username);
-		// log.info("Successfully got repositories and branches of user {}, repositories count {}", username, repositories.size());
 		return getRepositoriesOfUser(username)
 				.filter(Predicate.not(RepositoryDto::fork))
 				.publishOn(Schedulers.boundedElastic())
 				.map(repo -> {
 					Flux<BranchDto> branches = getBranchesForRepository(repo.owner().login(), repo.name());
 					
-					return new RepositoryDto(repo.name(), repo.owner(), repo.fork(), branches.collectList().block());
+					return new RepositoryDto(repo.name(), repo.owner(), repo.fork(), branches);
 				}).doOnComplete(() -> log.info("Data fetch for user {} successful", username));
 	}
 	
