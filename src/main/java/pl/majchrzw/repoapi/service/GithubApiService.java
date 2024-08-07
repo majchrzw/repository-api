@@ -34,7 +34,7 @@ public class GithubApiService {
 					Flux<BranchDto> branches = getBranchesForRepository(repo.owner().login(), repo.name());
 					
 					return new RepositoryDto(repo.name(), repo.owner(), repo.fork(), branches.collectList().block());
-				}).doOnComplete(() -> log.info("All data fetched"));
+				}).doOnComplete(() -> log.info("Data fetch for user {} successful", username));
 	}
 	
 	private Flux<RepositoryDto> getRepositoriesOfUser(String username) {
