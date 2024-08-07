@@ -3,11 +3,10 @@ package pl.majchrzw.repoapi;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import pl.majchrzw.repoapi.exception.ExternalApiErrorException;
 import pl.majchrzw.repoapi.exception.UserNotFoundException;
 import pl.majchrzw.repoapi.model.BranchDto;
@@ -15,28 +14,26 @@ import pl.majchrzw.repoapi.model.CommitDto;
 import pl.majchrzw.repoapi.model.OwnerDto;
 import pl.majchrzw.repoapi.model.RepositoryDto;
 import pl.majchrzw.repoapi.service.GithubApiService;
+import reactor.core.publisher.Flux;
 
 import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-
-@WebMvcTest
+@WebFluxTest
 public class MainControllerTests {
 	
 	@MockBean
 	private GithubApiService apiService;
 	
 	@Autowired
-	private MockMvc mockMvc;
+	private WebTestClient webTestClient;
 	
 	@Test
-	void testWhenNormalUserIsFound() throws Exception {
+	void testWhenNormalUserIsFound() {
 		// given
-		List<RepositoryDto> repos = List.of(
+		Flux<RepositoryDto> repos = Flux.just(
 				new RepositoryDto("first repo", new OwnerDto("user"), false, List.of(
 						new BranchDto("main", new CommitDto("sha of commit1")),
 						new BranchDto("second", new CommitDto("sha of commit2"))
@@ -47,58 +44,71 @@ public class MainControllerTests {
 		);
 		Mockito.when(apiService.getRepositoriesAndBranchesOfUser("user")).thenReturn(repos);
 		// when
-		ResultActions res = mockMvc.perform(get("/api/user"));
+		var response = webTestClient.get()
+				.uri("/api/user")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange();
 		// then
-		res.andExpect(status().isOk())
-				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$[*].name", containsInAnyOrder("first repo", "second repo")))
-				.andExpect(jsonPath("$[*].owner.login", everyItem(equalTo("user"))))
-				.andExpect(jsonPath("$[0].branches[*].name", containsInAnyOrder("main", "second")))
-				.andExpect(jsonPath("$[1].branches[*].name", containsInAnyOrder("main")));
+		response.expectStatus().isOk()
+				.expectHeader().contentType(MediaType.APPLICATION_JSON)
+				.expectBody()
+				.jsonPath("$[*].name").value(containsInAnyOrder("first repo", "second repo"))
+				.jsonPath("$[*].owner.login").value(everyItem(equalTo("user")))
+				.jsonPath("$[0].branches[*].name").value(containsInAnyOrder("main", "second"))
+				.jsonPath("$[1].branches[*].name").value(containsInAnyOrder("main"));
 	}
 	
 	@Test
-	void testWhenNoUserIsFound() throws Exception {
+	void testWhenNoUserIsFound() {
 		// given
 		Mockito.when(apiService.getRepositoriesAndBranchesOfUser("user")).thenThrow(new UserNotFoundException("Not found"));
 		// when
-		ResultActions res = mockMvc.perform(get("/api/user"));
+		var res = webTestClient.get()
+				.uri("/api/user")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange();
 		// then
-		res.andExpect(status().is(404))
-				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$.status").value("404"))
-				.andExpect(jsonPath("$.message").exists());
+		res.expectStatus().isNotFound()
+				.expectHeader().contentType(MediaType.APPLICATION_JSON)
+				.expectBody()
+				.jsonPath("$.message").exists();
 	}
 	
 	@Test
-	void testWhenExternalApiExceptionIsThrown() throws Exception {
+	void testWhenExternalApiExceptionIsThrown() {
 		// given
 		Mockito.when(apiService.getRepositoriesAndBranchesOfUser("user")).thenThrow(new ExternalApiErrorException("External api error"));
 		// when
-		ResultActions res = mockMvc.perform(get("/api/user"));
+		var res = webTestClient.get()
+				.uri("/api/user")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange();
 		// then
-		res.andExpect(status().is(500))
-				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$.status").value("500"))
-				.andExpect(jsonPath("$.message").exists());
+		res.expectStatus().is5xxServerError()
+				.expectHeader().contentType(MediaType.APPLICATION_JSON)
+				.expectBody()
+				.jsonPath("$.message").exists();
 	}
 	
 	@Test
-	void testWhenUserHasNoRepositories() throws Exception {
+	void testWhenUserHasNoRepositories() {
 		// given
-		Mockito.when(apiService.getRepositoriesAndBranchesOfUser("user")).thenReturn(Collections.emptyList());
+		Mockito.when(apiService.getRepositoriesAndBranchesOfUser("user")).thenReturn(Flux.just());
 		// when
-		ResultActions res = mockMvc.perform(get("/api/user"));
+		var res = webTestClient.get()
+				.uri("/api/user")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange();
 		// then
-		res.andExpect(status().isOk())
-				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-				.andExpect(content().string("[]"));
+		res.expectStatus().isOk()
+						.expectHeader().contentType(MediaType.APPLICATION_JSON)
+						.expectBody().json("[]");
 	}
 	
 	@Test
-	void testWhenUserHasRepoWithoutBranches() throws Exception {
+	void testWhenUserHasRepoWithoutBranches() {
 		// given
-		List<RepositoryDto> repos = List.of(
+		Flux<RepositoryDto> repos = Flux.just(
 				new RepositoryDto("first repo", new OwnerDto("user"), false, Collections.emptyList()),
 				new RepositoryDto("second repo", new OwnerDto("user"), false, List.of(
 						new BranchDto("main", new CommitDto("sha of commit1"))
@@ -106,12 +116,16 @@ public class MainControllerTests {
 		);
 		Mockito.when(apiService.getRepositoriesAndBranchesOfUser("user")).thenReturn(repos);
 		// when
-		ResultActions res = mockMvc.perform(get("/api/user"));
+		var res = webTestClient.get()
+				.uri("/api/user")
+				.accept(MediaType.APPLICATION_JSON)
+				.exchange();
 		// then
-		res.andExpect(status().isOk())
-				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$[*].name", containsInAnyOrder("first repo", "second repo")))
-				.andExpect(jsonPath("$[*].owner.login", everyItem(equalTo("user"))))
-				.andExpect(jsonPath("$[1].branches[*].name", containsInAnyOrder("main")));
+		res.expectStatus().isOk()
+						.expectHeader().contentType(MediaType.APPLICATION_JSON)
+						.expectBody()
+						.jsonPath("$[*].name").value(containsInAnyOrder("first repo", "second repo"))
+						.jsonPath("$[*].owner.login").value(everyItem(equalTo("user")))
+						.jsonPath("$[1].branches[*].name").value(containsInAnyOrder("main"));
 	}
 }

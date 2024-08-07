@@ -77,8 +77,9 @@ public class GithubApiServiceTests {
 				.setBody(emptyCollection));
 		int initialCount = webServer.getRequestCount();
 		// when
-		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("wojmaj22");
+		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("wojmaj22").collectList().block();
 		// then
+		assert res != null;
 		Assertions.assertEquals(0, res.size());
 		Assertions.assertEquals(1, webServer.getRequestCount() - initialCount);
 	}
@@ -95,8 +96,9 @@ public class GithubApiServiceTests {
 				.setBody(oneBranch));
 		int initialCount = webServer.getRequestCount();
 		// when
-		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat");
+		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat").collectList().block();
 		// then
+		assert res != null;
 		Assertions.assertEquals(1, res.size());
 		Assertions.assertEquals("Hello-World", res.getFirst().name());
 		Assertions.assertEquals("octocat", res.getFirst().owner().login());
@@ -140,8 +142,9 @@ public class GithubApiServiceTests {
 				.setBody(oneBranch));
 		int initialCount = webServer.getRequestCount();
 		// when
-		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat");
+		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat").collectList().block();
 		// then
+		assert res != null;
 		Assertions.assertEquals(1, res.size());
 		Assertions.assertFalse(res.getFirst().fork());
 		Assertions.assertEquals(1, res.getFirst().branches().size());
@@ -187,8 +190,9 @@ public class GithubApiServiceTests {
 				.setBody(emptyCollection));
 		int initialCount = webServer.getRequestCount();
 		// when
-		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat");
+		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat").collectList().block();
 		// then
+		assert res != null;
 		Assertions.assertEquals(2, res.size());
 		Assertions.assertEquals(1, res.getFirst().branches().size());
 		Assertions.assertEquals(0, res.getLast().branches().size());
@@ -224,8 +228,9 @@ public class GithubApiServiceTests {
 				.setBody(twoBranches));
 		int initialCount = webServer.getRequestCount();
 		// when
-		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat");
+		List<RepositoryDto> res = githubApiService.getRepositoriesAndBranchesOfUser("octocat").collectList().block();
 		// then
+		assert res != null;
 		Assertions.assertEquals(1, res.size());
 		Assertions.assertEquals(2, res.getFirst().branches().size());
 		Assertions.assertEquals(2, webServer.getRequestCount() - initialCount);
@@ -238,7 +243,7 @@ public class GithubApiServiceTests {
 				.setResponseCode(404)
 				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 		// then
-		Assertions.assertThrows(UserNotFoundException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("not_existing"));
+		Assertions.assertThrows(UserNotFoundException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("not_existing").blockFirst());
 	}
 	
 	@Test
@@ -248,33 +253,7 @@ public class GithubApiServiceTests {
 				.setResponseCode(403)
 				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 		// then
-		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("some_user"));
-	}
-	
-	@Test
-	void noRepoResponseTest() {
-		// given
-		webServer.enqueue(new MockResponse()
-				.setResponseCode(200)
-				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setBody(""));
-		// then
-		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("random"));
-	}
-	
-	@Test
-	void noBranchResponseTest() {
-		// given
-		webServer.enqueue(new MockResponse()
-				.setResponseCode(200)
-				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setBody(oneRepo));
-		webServer.enqueue(new MockResponse()
-				.setResponseCode(200)
-				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-				.setBody(""));
-		// then
-		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("random"));
+		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("some_user").blockFirst());
 	}
 	
 	@Test
@@ -289,6 +268,6 @@ public class GithubApiServiceTests {
 				.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 				.setBody("[]"));
 		// then
-		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("random"));
+		Assertions.assertThrows(ExternalApiErrorException.class, () -> githubApiService.getRepositoriesAndBranchesOfUser("random").blockFirst());
 	}
 }

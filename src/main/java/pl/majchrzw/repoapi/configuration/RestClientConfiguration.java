@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class RestClientConfiguration {
@@ -18,11 +18,11 @@ public class RestClientConfiguration {
 	private String url;
 	
 	@Bean
-	public RestClient restClient() {
+	public WebClient webClient() {
 		if (url.isBlank()) {
 			log.error("No api url provided!");
 		}
-		return RestClient.builder()
+		return WebClient.builder()
 				.baseUrl(url)
 				.defaultHeader("X-GitHub-Api-Version", "2022-11-28")
 				.defaultHeader("Accept", "application/vnd.github+json")
