@@ -1,6 +1,8 @@
 # github-api
 
 App provides one HTTP endpoint which shows data about user repositories and their branches from GitHub api.
+Version of this app from `main` branch of repository is based on default Spring MVC. You can choose alternative version
+written in Spring WebFlux - on branch `webflux`. Everything below applies to both versions.
 ## Beforehand
 ### Prerequisite
 To run this app you need to have installed and configured `maven 3.9.5` or newer and `java 21 JDK` or newer.
